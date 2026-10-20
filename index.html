@@ -24,10 +24,10 @@
   <button class="new-chat" id="newChat"><span>＋</span> Nuevo chat</button>
   <div class="side-label">TU ESPACIO</div>
   <div class="history" id="history"><button class="side-link">✧ &nbsp; Conversación actual</button></div>
-  <div class="side-bottom"><div><span class="status-dot"></span>Interfaz lista</div><p>Lua · Node.js · JavaScript · HTML</p><p>Prototipo de CodeX AI</p></div>
+  <div class="side-bottom"><div><span class="status-dot"></span><span id="sideStatus">Configura la IA</span></div><p>Lua · Node.js · JavaScript · HTML</p><p>CodeX AI · Asistente de código</p></div>
 </aside>
 <main class="main">
-  <header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="icon-btn mobile-menu" id="mobileNew" aria-label="Nuevo chat" style="padding:7px 10px">☰</button><div><div class="top-title">CodeX AI <span style="color:#a78bfa">✦</span></div><div class="top-sub">Tu asistente creativo de programación</div></div></div><span class="beta">BETA · PROTOTIPO</span></header>
+  <header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="icon-btn mobile-menu" id="mobileNew" aria-label="Nuevo chat" style="padding:7px 10px">☰</button><div><div class="top-title">CodeX AI <span style="color:#a78bfa">✦</span></div><div class="top-sub">Tu asistente creativo de programación</div></div></div><div style="display:flex;align-items:center;gap:9px"><button class="icon-btn" id="configureApi" style="padding:7px 10px;font-size:12px">⚙ IA</button><span class="beta" id="connectionBadge">IA SIN CONECTAR</span></div></header>
   <section class="workspace" id="workspace">
     <div class="messages" id="messages">
       <div class="welcome" id="welcome"><div class="orb">✦</div><h1>Tu universo de <span class="gradient">código.</span></h1><p>Cuéntame qué quieres crear. Imagina la idea, elige el lenguaje y comencemos a construirla.</p>
@@ -55,7 +55,13 @@
 (function(){
 const $=id=>document.getElementById(id);
 const prompt=$("prompt"),messages=$("messages"),welcome=$("welcome"),language=$("language"),send=$("send"),imageInput=$("imageInput"),fileChip=$("fileChip");
-let selectedImage=null,turn=0;
+let selectedImage=null,turn=0,conversation=[];
+const API_KEY_NAME="codexai_worker_url";
+let apiUrl=localStorage.getItem(API_KEY_NAME)||"";
+function updateConnection(){const ok=Boolean(apiUrl);$("connectionBadge").textContent=ok?"✦ IA CONFIGURADA":"IA SIN CONECTAR";$("connectionBadge").style.borderColor=ok?"#3b946b":"#6842a0";$("connectionBadge").style.color=ok?"#a8ffd0":"#d9c4ff";$("sideStatus").textContent=ok?"IA conectada":"Configura la IA";}
+$("configureApi").addEventListener("click",()=>{const value=promptForApi();if(value===null)return;apiUrl=value.trim().replace(/\\/$/,"");if(apiUrl&&!/^https:\/\//i.test(apiUrl)){alert("La URL debe empezar por https://");return;}if(apiUrl)localStorage.setItem(API_KEY_NAME,apiUrl);else localStorage.removeItem(API_KEY_NAME);updateConnection();alert(apiUrl?"URL guardada. Ya puedes hablar con la IA real.":"Se quitó la URL de la IA.");});
+function promptForApi(){return window.prompt("Pega la URL de tu Worker de Cloudflare (termina en .workers.dev). No pegues ninguna clave secreta aquí.",apiUrl);}
+updateConnection();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function selectImage(file){if(!file)return;if(!file.type.startsWith("image/")){alert("Selecciona un archivo de imagen.");return;}if(file.size>5*1024*1024){alert("La imagen debe pesar menos de 5 MB.");return;}selectedImage=file;$("fileName").textContent=file.name;fileChip.classList.add("show");$("attachLabel").textContent="Imagen adjunta";}
 $("attachBtn").addEventListener("click",()=>imageInput.click());
@@ -68,9 +74,37 @@ if(lang==="JavaScript"){if(s.includes("contador"))return 'let contador = 0;\n\nc
 if(lang==="Node.js"){if(s.includes("discord")&&s.includes("bot"))return 'const { Client, GatewayIntentBits } = require("discord.js");\n\nconst client = new Client({ intents: [GatewayIntentBits.Guilds] });\n\nclient.once("ready", () => {\n  console.log("Bot conectado: " + client.user.tag);\n});\n\n// Guarda el token en la variable de entorno DISCORD_TOKEN.\nclient.login(process.env.DISCORD_TOKEN);';return 'const http = require("node:http");\n\nconst server = http.createServer((req, res) => {\n  res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });\n  res.end("¡Servidor de CodeX AI funcionando!");\n});\n\nserver.listen(3000, () => {\n  console.log("Servidor disponible en el puerto 3000");\n});';}
 if(s.includes("roblox")||s.includes("part")||s.includes("pieza"))return '-- Script Lua para Roblox\nlocal part = script.Parent\n\npart.Touched:Connect(function(hit)\n    print("¡Un objeto ha tocado la pieza!")\nend)';return '-- Script Lua de ejemplo\nlocal nombre = "CodeX AI"\n\nlocal function saludar()\n    print("¡Hola desde " .. nombre .. "!")\nend\n\nsaludar()';}
 function addCode(bubble,code,lang){const box=document.createElement("div");box.className="codebox";const head=document.createElement("div");head.className="codehead";const label=document.createElement("span");label.textContent="▣  "+lang+" · Código de ejemplo";const actions=document.createElement("div");actions.className="code-actions";const copy=document.createElement("button");copy.className="mini";copy.textContent="Copiar";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(code);copy.textContent="¡Copiado!";}catch(e){const ta=document.createElement("textarea");ta.value=code;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();copy.textContent="¡Copiado!";}setTimeout(()=>copy.textContent="Copiar",1600);});const download=document.createElement("button");download.className="mini";download.textContent="Descargar";download.addEventListener("click",()=>{const ext=lang==="HTML"?"html":lang==="Lua"?"lua":"js";const blob=new Blob([code],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="codex-ejemplo."+ext;a.click();URL.revokeObjectURL(a.href);});actions.append(copy,download);head.append(label,actions);const pre=document.createElement("pre");pre.className="codebody";pre.textContent=code;box.append(head,pre);bubble.appendChild(box);}
-function respond(request,lang){const low=request.toLowerCase();let explanation="Preparé una plantilla inicial en "+lang+". Puedes copiarla o descargarla y adaptarla a tu proyecto.";if(low.includes("contador"))explanation="Este ejemplo aumenta un contador cada vez que se pulsa un botón. En JavaScript necesita que tu HTML incluya los elementos #sumar y #resultado.";else if(low.includes("discord")&&lang==="Node.js")explanation="Este es un punto de partida para un bot de Discord. Instala discord.js y configura DISCORD_TOKEN como variable de entorno; nunca publiques el token.";else if(low.includes("roblox")&&lang==="Lua")explanation="Pon este Script dentro de una pieza (Part) en Roblox Studio para detectar el evento Touched.";else if(lang==="HTML")explanation="Guarda el código como index.html y ábrelo en tu navegador para probar esta página de ejemplo.";const bubble=addMessage("ai",explanation);addCode(bubble,codeFor(request,lang),lang);const note=document.createElement("p");note.style.cssText="margin-top:10px;color:#a996c2;font-size:11px";note.textContent="✦ Modo prototipo: usa plantillas locales. La conexión a una IA real se configurará en la siguiente fase.";bubble.appendChild(note);$("workspace").scrollTop=$("workspace").scrollHeight;}
-function submit(){const text=prompt.value.trim();if(!text&&!selectedImage)return;if(welcome)welcome.style.display="none";const imageUrl=selectedImage?URL.createObjectURL(selectedImage):null;addMessage("user",text||"Analiza la imagen adjunta",imageUrl);const request=text||"Analiza esta imagen y ayúdame con el código relacionado";const lang=language.value;prompt.value="";prompt.style.height="auto";selectedImage=null;imageInput.value="";fileChip.classList.remove("show");$("attachLabel").textContent="Adjunta una imagen si quieres";send.disabled=true;send.textContent="…";setTimeout(()=>{respond(request,lang);send.disabled=false;send.textContent="➤";prompt.focus();},350);turn++;const h=document.createElement("button");h.className="side-link";h.textContent="✧  "+(text||"Imagen adjunta").slice(0,27);h.title=text;h.addEventListener("click",()=>{$("workspace").scrollTop=$("workspace").scrollHeight;});$("history").prepend(h);}
-send.addEventListener("click",submit);prompt.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit();}});prompt.addEventListener("input",()=>{prompt.style.height="auto";prompt.style.height=Math.min(prompt.scrollHeight,180)+"px";});function newChat(){messages.innerHTML="";const w=document.createElement("div");w.className="welcome";w.innerHTML='<div class="orb">✦</div><h1>¿Qué vamos a <span class="gradient">crear?</span></h1><p>Describe tu idea y elige un lenguaje para empezar.</p>';messages.appendChild(w);prompt.value="";selectedImage=null;imageInput.value="";fileChip.classList.remove("show");$("attachLabel").textContent="Adjunta una imagen si quieres";} $("newChat").addEventListener("click",newChat);$("mobileNew").addEventListener("click",newChat);
+function renderAI(bubble,text,lang){
+  const chunks=String(text||"").split(/```([a-zA-Z0-9_+.-]*)\\n?([\\s\\S]*?)```/g);
+  for(let i=0;i<chunks.length;){const before=chunks[i++];if(before.trim()){before.split(/\\n{2,}/).forEach(part=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.textContent=part;bubble.appendChild(p);});}if(i<chunks.length){const codeLang=chunks[i++]||lang;const code=chunks[i++]||"";addCode(bubble,code.replace(/\\n$/,""),codeLang);}}
+}
+async function fileAsDataURL(file){return await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(file);});}
+async function askRealAI(request,lang,imageData){
+  if(!apiUrl)throw new Error("Primero toca ⚙ IA y pega la URL de tu Worker de Cloudflare. La guía está en el repositorio, archivo CLOUDFLARE_SETUP.md.");
+  const userParts={role:"user",text:request,language:lang};if(imageData){userParts.image={mimeType:imageData.split(";")[0].split(":")[1]||"image/jpeg",data:imageData.split(",")[1]};}
+  conversation.push(userParts);if(conversation.length>12)conversation=conversation.slice(-12);
+  const response=await fetch(apiUrl.replace(/\\/$/,"")+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:conversation})});
+  let data={};try{data=await response.json();}catch(e){}
+  if(!response.ok)throw new Error(data.error||("Error de la IA (HTTP "+response.status+")"));
+  if(!data.text)throw new Error("La IA respondió sin texto. Intenta otra vez.");
+  conversation.push({role:"model",text:data.text});if(conversation.length>12)conversation=conversation.slice(-12);
+  return data.text;
+}
+async function submit(){
+  const text=prompt.value.trim();if(!text&&!selectedImage)return;
+  if(welcome)welcome.style.display="none";
+  const file=selectedImage;const imageUrl=file?URL.createObjectURL(file):null;
+  addMessage("user",text||(file?"Analiza la imagen adjunta":""),imageUrl);
+  const request=text||(file?"Analiza esta imagen y ayúdame con el código relacionado":"");const lang=language.value;
+  prompt.value="";prompt.style.height="auto";selectedImage=null;imageInput.value="";fileChip.classList.remove("show");$("attachLabel").textContent="Adjunta una imagen si quieres";
+  send.disabled=true;send.textContent="…";
+  const loading=addMessage("ai","Conectando con CodeX AI… ✦");
+  try{const imageData=file?await fileAsDataURL(file):null;const answer=await askRealAI(request,lang,imageData);loading.innerHTML="";renderAI(loading,answer,lang);}
+  catch(err){loading.innerHTML="";const p=document.createElement("p");p.textContent="⚠️ "+(err.message||"No se pudo conectar con la IA.");loading.appendChild(p);const help=document.createElement("p");help.style.cssText="font-size:12px;color:#c6afe8;margin-top:8px";help.textContent="La IA real necesita configurar el Worker y su clave privada. Mira CLOUDFLARE_SETUP.md en el repositorio.";loading.appendChild(help);}
+  send.disabled=false;send.textContent="➤";prompt.focus();$("workspace").scrollTop=$("workspace").scrollHeight;
+  turn++;const h=document.createElement("button");h.className="side-link";h.textContent="✧  "+(text||"Imagen adjunta").slice(0,27);h.title=text;h.addEventListener("click",()=>{$("workspace").scrollTop=$("workspace").scrollHeight;});$("history").prepend(h);
+}
+send.addEventListener("click",submit);prompt.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit();}});prompt.addEventListener("input",()=>{prompt.style.height="auto";prompt.style.height=Math.min(prompt.scrollHeight,180)+"px";});function newChat(){conversation=[];messages.innerHTML="";const w=document.createElement("div");w.className="welcome";w.innerHTML='<div class="orb">✦</div><h1>¿Qué vamos a <span class="gradient">crear?</span></h1><p>Describe tu idea y elige un lenguaje para empezar.</p>';messages.appendChild(w);prompt.value="";selectedImage=null;imageInput.value="";fileChip.classList.remove("show");$("attachLabel").textContent="Adjunta una imagen si quieres";} $("newChat").addEventListener("click",newChat);$("mobileNew").addEventListener("click",newChat);
 })();
 </script>
 </body>
