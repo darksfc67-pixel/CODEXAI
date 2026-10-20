@@ -59,7 +59,7 @@ let selectedImage=null,turn=0,conversation=[];
 const API_KEY_NAME="codexai_worker_url";
 let apiUrl=localStorage.getItem(API_KEY_NAME)||"";
 function updateConnection(){const ok=Boolean(apiUrl);$("connectionBadge").textContent=ok?"✦ IA CONFIGURADA":"IA SIN CONECTAR";$("connectionBadge").style.borderColor=ok?"#3b946b":"#6842a0";$("connectionBadge").style.color=ok?"#a8ffd0":"#d9c4ff";$("sideStatus").textContent=ok?"IA conectada":"Configura la IA";}
-$("configureApi").addEventListener("click",()=>{const value=promptForApi();if(value===null)return;apiUrl=value.trim().replace(/\\/$/,"");if(apiUrl&&!/^https:\/\//i.test(apiUrl)){alert("La URL debe empezar por https://");return;}if(apiUrl)localStorage.setItem(API_KEY_NAME,apiUrl);else localStorage.removeItem(API_KEY_NAME);updateConnection();alert(apiUrl?"URL guardada. Ya puedes hablar con la IA real.":"Se quitó la URL de la IA.");});
+$("configureApi").addEventListener("click",()=>{const value=promptForApi();if(value===null)return;apiUrl=value.trim().replace(/\/$/,"");if(apiUrl&&!/^https:\/\//i.test(apiUrl)){alert("La URL debe empezar por https://");return;}if(apiUrl)localStorage.setItem(API_KEY_NAME,apiUrl);else localStorage.removeItem(API_KEY_NAME);updateConnection();alert(apiUrl?"URL guardada. Ya puedes hablar con la IA real.":"Se quitó la URL de la IA.");});
 function promptForApi(){return window.prompt("Pega la URL de tu Worker de Cloudflare (termina en .workers.dev). No pegues ninguna clave secreta aquí.",apiUrl);}
 updateConnection();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
